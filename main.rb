@@ -52,7 +52,7 @@ class Map
     if $branch_num == 0
       $branches = []
       $branch_num = rand(1..3)
-      $branch_num.times do |n|
+      $branch_num.times do
         $branches.push([:battle, :event, :rest].sample)
       end
     end
@@ -257,6 +257,9 @@ class Battle
       end
     when :enemy_effect
       $enemy_action_id = 0
+      if $player_stats[:hp] == 0
+        $battle_phase = :player_lose
+      end
       $battle_phase = :player_action if Input.key_push?(K_ENTER)
     when :player_win
       case @win_step
@@ -272,6 +275,8 @@ class Battle
           $scene = :map
         end
       end
+    when :player_lose
+      $message = '敗北した'
     end
   end
 end
@@ -454,7 +459,6 @@ Window.load_resources do
 
     # 敵
     if $scene == :battle
-      
       Window.draw_font(400, 140, "#{$enemy_name}", font_fff16)
       Window.draw_box_fill(400, 166, 480, 175, [0, 0, 0])
       Window.draw_box_fill(400, 166, 400 + (80 * $enemy_hp / $enemy_max_hp).floor, 175, [0, 255, 0])
@@ -485,31 +489,3 @@ Window.load_resources do
     end
   end
 end
-
-# Window.bgcolor = [120, 12, 12]
-# font_fff16 = Font.new(16, font_name="meiryo")
-# frame_count = 0
-# GROUND_Y = 420
-
-# Image.register(:cat1, 'images/cat_1.png')
-# Image.register(:cat2, 'images/cat_2.png')
-# Image.register(:cat3, 'images/cat_3.png')
-# Image.register(:cat4, 'images/cat_4.png')
-# Image.register(:cat5, 'images/cat_5.png')
-# Image.register(:cat6, 'images/cat_6.png')
-# Image.register(:cat7, 'images/cat_7.png')
-
-# Window.load_resources do
-
-#   Window.loop do
-#     frame_count += 1
-#     if frame_count == 60
-#       frame_count = 0
-#     end
-
-#     Window.draw_box_fill(0, 0, Window.width, GROUND_Y, [149, 200, 255])
-#     Window.draw_box_fill(0, GROUND_Y, Window.width, Window.height, [105, 187, 89])
-
-#     Window.draw((frame_count / 4).floor * 20, 360, Image["cat#{(frame_count / 4).floor % 7 + 1}"])
-#   end
-# end
