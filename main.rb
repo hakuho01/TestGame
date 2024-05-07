@@ -101,7 +101,7 @@ def go_scene(scene)
   when :battle
     $battle = Battle.new
   when :event
-    $event_id = 1
+    $event_id = rand(1..2)
     $event = Event.new
   when :rest
     $rest = Rest.new
@@ -173,6 +173,29 @@ class Event
         $scene = :map if Input.key_push?(K_ENTER)
       end
     when 2
+      $title = '三十三間堂'
+      case $steps
+      when 0
+        $message = '1000ju「お前、手2本しかないの？」'
+        $steps += 1 if Input.key_push?(K_ENTER)
+      when 1
+        if $player_actions.include?(8)
+          $message = '1000ju「いや、なんでもない」'
+          $steps = 3 if Input.key_push?(K_ENTER)
+        else
+          $message = '1000ju「けどまあ2本の手でそれぞれ攻撃すれば2回攻撃できるじゃん」'
+          if Input.key_push?(K_ENTER)
+            $player_actions.push(8)
+            $steps = 2
+          end
+        end
+      when 2
+        $message = '双撃を覚えた'
+        $scene = :map if Input.key_push?(K_ENTER)
+      when 3
+        $message = '1000juはパチンコを打ちに行ってしまった'
+        $scene = :map if Input.key_push?(K_ENTER)
+      end
     when 3
     end
   end
@@ -455,6 +478,12 @@ Window.load_resources do
       Window.draw(0, 0, Image[:bg_event])
     else
       Window.draw(0, 0, Image[:background])
+    end
+
+    if $scene == :map
+      $branches.each_with_index do |branch, i|
+        Window.draw_font(180 + 80 * i, 140, "#{branch}", font_fff16)
+      end
     end
 
     # 敵
