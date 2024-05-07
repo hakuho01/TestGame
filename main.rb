@@ -15,53 +15,166 @@ $player_stats = {
   tmp_def: 0
 }
 
-$actions = [1, 2, 3, 4, 5, 6, 8]
+$player_actions = [1, 2, 3]
 $actions_slot = []
 
 $scene = :map
 
-textfont = Font.new(16, 'ヒラギノ角ゴ')
+font_fff16 = Font.new(16, 'ヒラギノ角ゴ')
+font_fff12 = Font.new(12, 'ヒラギノ角ゴ')
 
-Image.register(:cat1, 'images/cat_1.png')
+Image.register(:enemy1, 'images/enemy1.png')
+Image.register(:enemy2, 'images/enemy2.png')
+Image.register(:enemy3, 'images/enemy3.png')
 Image.register(:background, 'images/background.png')
+Image.register(:bg_spring, 'images/bg_spring.png')
+Image.register(:bg_battle, 'images/bg_battle.png')
+Image.register(:bg_event, 'images/bg_event.png')
+
+# ACTIONテーブル
+ACTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 # 敵情報
 ENEMIES = [
-  { id: 1, name: 'らすねこ', hp: 50, atk: 15, def: 5, actions: [1, 1, 2, 3], award: { status: 'max_hp', value: 1 } },
-  { id: 2, name: 'らすねこ2', hp: 60, atk: 17, def: 10, actions: [1, 1, 2, 3], award: { status: 'def', value: 2 } },
-  { id: 3, name: 'らすねこ3', hp: 40, atk: 20, def: 3, actions: [1, 1, 2, 2], award: { status: 'atk', value: 2 } }
+  { id: 1, name: 'らすねこ', hp: 50, atk: 15, def: 5, actions: [1, 1, 2, 3], award: { status: 'max_hp', value: 5 } },
+  { id: 2, name: 'マゾ', hp: 60, atk: 22, def: 10, actions: [1, 1, 2, 3], award: { status: 'def', value: 5 } },
+  { id: 3, name: '塩屋', hp: 80, atk: 25, def: 8, actions: [1, 1, 2, 2], award: { status: 'atk', value: 5 } }
 ]
 
 # Mapクラス
 class Map
   def initialize
     $floor = 1
+    $branch_num = 0
   end
 
   def execute_map
-    $message = 'どこへ進む？1.左　2.真ん中　3.右'
-    if Input.key_push?(K_1)
-      $floor += 1
-      $battle = Battle.new
-      $scene = :battle
-      $scene = :ending if floor == 10
-    elsif Input.key_push?(K_2)
-      $floor += 1
-      $battle = Battle.new
-      $scene = :battle
-      $scene = :ending if floor == 10
-    elsif Input.key_push?(K_3)
-      $floor += 1
-      $battle = Battle.new
-      $scene = :battle
-      $scene = :ending if floor == 10
+    if $branch_num == 0
+      $branches = []
+      $branch_num = rand(1..3)
+      $branch_num.times do |n|
+        $branches.push([:battle, :event, :rest].sample)
+      end
+    end
+
+    case $branch_num
+    when 1
+      $message = '先へ進む'
+      if Input.key_push?(K_ENTER)
+        $floor += 1
+        $scene = $branches[0]
+        go_scene($scene)
+      end
+    when 2
+      $message = 'どこへ進む？1.左　2.右'
+      if Input.key_push?(K_1)
+        $floor += 1
+        $scene = $branches[0]
+        go_scene($scene)
+      elsif Input.key_push?(K_2)
+        $floor += 1
+        $scene = $branches[1]
+        go_scene($scene)
+      end
+    when 3
+      $message = 'どこへ進む？1.左　2.真ん中　3.右'
+      if Input.key_push?(K_1)
+        $floor += 1
+        $scene = $branches[0]
+        go_scene($scene)
+      elsif Input.key_push?(K_2)
+        $floor += 1
+        $scene = $branches[1]
+        go_scene($scene)
+      elsif Input.key_push?(K_3)
+        $floor += 1
+        $battle = Battle.new
+        $scene = $branches[2]
+        go_scene($scene)
+      end
+    end
+  end
+end
+
+def go_scene(scene)
+  case scene
+  when :battle
+    $battle = Battle.new
+  when :event
+    $event_id = 1
+    $event = Event.new
+  when :rest
+    $rest = Rest.new
+  end
+  $branch_num = 0
+  $scene = :ending if $floor == 10
+  fade_in
+end
+
+# Restクラス
+class Rest
+  def initialize
+    @rest_step = 0
+  end
+
+  def execute_rest
+    $title = '回復の温泉'
+    case @rest_step
+    when 0
+      $message = 'どうする？ 1.休憩 2.強化 3.鍛錬'
+      if Input.key_push?(K_1)
+        $player_stats[:hp] += ($player_stats[:max_hp] * 0.3).floor
+        $player_stats[:hp] = $player_stats[:max_hp] if $player_stats[:hp] > $player_stats[:max_hp]
+        @rest_step = 1
+      elsif Input.key_push?(K_2)
+        grow_stats = [:max_hp, :atk, :def].sample
+        $player_stats[grow_stats] = ($player_stats[grow_stats] * 1.1).floor
+        @rest_step = 2
+      elsif Input.key_push?(K_3)
+        unaq_actions = ACTIONS - $player_actions
+        $player_actions.push(unaq_actions.sample)
+        @rest_step = 3
+      end
+    when 1 # 休憩
+      $message = '温泉に浸かって体力が回復した'
+      $scene = :map if Input.key_push?(K_ENTER)
+    when 2 # 強化
+      $message = '温泉の湯を飲んでステータスが上昇した'
+      $scene = :map if Input.key_push?(K_ENTER)
+    when 3 # 鍛錬
+      $message = '鍛錬して新たな技能を身につけた'
+      $scene = :map if Input.key_push?(K_ENTER)
     end
   end
 end
 
 # イベントクラス
 class Event
-  def execute_event
+  def initialize
+    $steps = 0
+  end
+
+  def execute_event(event_id)
+    case event_id
+    when 1
+      $title = 'おぼろの秘密研究室'
+      case $steps
+      when 0
+        $message = 'おぼろ「やぁ！」'
+        $steps += 1 if Input.key_push?(K_ENTER)
+      when 1
+        $message = 'おぼろ「研究の成果を君にも分けてあげよう！」'
+        if Input.key_push?(K_ENTER)
+          $player_stats[:atk] = ($player_stats[:atk] * 1.1).floor
+          $steps += 1
+        end
+      when 2
+        $message = '攻撃力が上がった'
+        $scene = :map if Input.key_push?(K_ENTER)
+      end
+    when 2
+    when 3
+    end
   end
 end
 
@@ -74,6 +187,7 @@ class Battle
     # 敵idから各変数を代入
     $enemy_name = $enemy_data[:name]
     $enemy_hp = $enemy_data[:hp]
+    $enemy_max_hp = $enemy_data[:hp]
     $enemy_atk = $enemy_data[:atk]
     $enemy_def = $enemy_data[:def]
     $enemy_actions = $enemy_data[:actions]
@@ -85,6 +199,7 @@ class Battle
     $enemy_tmp_atk = 0
     $enemy_tmp_def = 0
     $battle_phase = :player_action
+    @win_step = 0
   end
 
   def execute_battle
@@ -99,8 +214,8 @@ class Battle
         $enemy_action_name = $enemy_action.fetch_action($enemy_action_id)[:name]
       end
       if $actions_slot.empty?
-        tmp_actions = $actions.dup
-        4.times do
+        tmp_actions = $player_actions.dup
+        3.times do
           act = tmp_actions.delete_at(rand(tmp_actions.length))
           $actions_slot << act
         end
@@ -108,9 +223,9 @@ class Battle
       end
 
       # ステータス変化の初期化
-      $player_tmp_def = 0
+      $player_stats[:tmp_def] = 0
 
-      $message = "1. #{action.fetch_action($actions_slot[0])[:name]} 2. #{action.fetch_action($actions_slot[1])[:name]} 3. #{action.fetch_action($actions_slot[2])[:name]} 4. #{action.fetch_action($actions_slot[3])[:name]}"
+      $message = "1. #{action.fetch_action($actions_slot[0])[:name]} 2. #{action.fetch_action($actions_slot[1])[:name]} 3. #{action.fetch_action($actions_slot[2])[:name]}"
 
       # プレイヤーの行動処理
       if Input.key_push?(K_1)
@@ -122,9 +237,9 @@ class Battle
       elsif Input.key_push?(K_3)
         $player_action_name = action.fetch_action($actions_slot[2])[:name]
         action.execute_action($actions_slot[2])
-      elsif Input.key_push?(K_4)
-        $player_action_name = action.fetch_action($actions_slot[3])[:name]
-        action.execute_action($actions_slot[3])
+      #elsif Input.key_push?(K_4)
+      #  $player_action_name = action.fetch_action($actions_slot[3])[:name]
+      #  action.execute_action($actions_slot[3])
       end
     when :player_effect
       $actions_slot = []
@@ -134,7 +249,7 @@ class Battle
       end
     when :enemy_action
       $enemy_tmp_def = 0
-      $message = '敵の行動！'
+      $message = "#{$enemy_name}の行動！"
       if Input.key_push?(K_ENTER)
         # 敵の行動処理
         $enemy_action.execute_action($enemy_action_id)
@@ -144,10 +259,18 @@ class Battle
       $enemy_action_id = 0
       $battle_phase = :player_action if Input.key_push?(K_ENTER)
     when :player_win
-      $message = '勝利した。ステータスが上昇した'
-      if Input.key_push?(K_ENTER)
-        $player_stats[$enemy_data[:award][:status]] = $player_stats[$enemy_data[:award][:status]] + $enemy_data[:award][:value]
-        $scene = :map
+      case @win_step
+      when 0
+        $message = '勝利した'
+        if Input.key_push?(K_ENTER)
+          $player_stats[$enemy_data[:award][:status]] = $player_stats[$enemy_data[:award][:status]] + $enemy_data[:award][:value]
+          @win_step += 1
+        end
+      when 1
+        $message = 'ステータスが上昇した'
+        if Input.key_push?(K_ENTER)
+          $scene = :map
+        end
       end
     end
   end
@@ -170,7 +293,7 @@ class Action
     when 6
       { name: '回復' }
     when 7
-      { name: '魔法' }
+      { name: '激昂' }
     when 8
       { name: '二段攻撃' }
     end
@@ -216,7 +339,7 @@ class Action
 
       $battle_phase = :player_effect
     when 5 # 集中
-      $player_stats[:tmp_atk] = ($player_stats[:atk] * 0.05).floor
+      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.05).floor
 
       $message = '集中して力を溜めている'
 
@@ -228,7 +351,12 @@ class Action
       $message = "食料を食べて#{$player_gain_hp}回復した"
 
       $battle_phase = :player_effect
-    when 7 # 魔法
+    when 7 # 激昂
+      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.15).floor
+
+      $message = '激昂して攻撃力が上がった'
+
+      $battle_phase = :player_effect
     when 8 # 二段攻撃
       $player_dmg = $player_stats[:atk] + $player_stats[:tmp_atk]
       $total_give_dmg = $player_dmg * 2 - $enemy_def - $enemy_tmp_def
@@ -283,52 +411,83 @@ class EnemyAction
   end
 end
 
+def fade_in
+  $fade_flg = true
+  $fade_frames = 45
+end
+
 # メインループ
 Window.load_resources do
   $event = Event.new
   $map = Map.new
+  $rest = Rest.new
   Window.loop do
     frame_count += 1
 
     case $scene
     when :map
+      $title = '進む道を選べ'
       $map.execute_map
     when :battle
+      $title = "#{$enemy_name}が現れた"
       $battle.execute_battle
     when :event
-      $event.execute_event
+      $event.execute_event($event_id)
+    when :rest
+      $rest.execute_rest
     end
 
     #---- 描画処理 ----
-    $status = "HP:#{$player_stats[:hp]}/#{$player_stats[:max_hp]} ATK:#{$player_stats[:atk]}(+#{$player_stats[:tmp_atk]}) DEF:#{$player_stats[:def]}(+#{$player_stats[:tmp_def]})"
+    $status = "体力:#{$player_stats[:hp]}/#{$player_stats[:max_hp]} 攻撃力:#{$player_stats[:atk]}(+#{$player_stats[:tmp_atk]}) 防御力:#{$player_stats[:def]}(+#{$player_stats[:tmp_def]})"
 
     # 背景
-    Window.draw(0, 0, Image[:background])
+    case $scene
+    when :rest
+      Window.draw(0, 0, Image[:bg_spring])
+    when :battle
+      Window.draw(0, 0, Image[:bg_battle])
+    when :event
+      Window.draw(0, 0, Image[:bg_event])
+    else
+      Window.draw(0, 0, Image[:background])
+    end
 
     # 敵
     if $scene == :battle
-      Window.draw_font(250, 120, "#{$enemy_action_name}", textfont)
-      Window.draw_font(250, 280, "#{$enemy_name} HP:#{$enemy_hp}", textfont)
-      Window.draw(200, 156, Image[:cat1])
+      
+      Window.draw_font(400, 140, "#{$enemy_name}", font_fff16)
+      Window.draw_box_fill(400, 166, 480, 175, [0, 0, 0])
+      Window.draw_box_fill(400, 166, 400 + (80 * $enemy_hp / $enemy_max_hp).floor, 175, [0, 255, 0])
+      Window.draw_font(400, 180, "#{$enemy_hp}/#{$enemy_max_hp}", font_fff12)
+      Window.draw_font(400, 210, "#{$enemy_action_name}", font_fff12)
+      Window.draw(150, 156, Image['enemy'+$enemy_data[:id].to_s])
     end
 
     # テキストウィンドウ
     Window.draw_box_fill(0, 360, Window.width, Window.height, [0, 0, 0])
-    Window.draw_font(0, 360, $message, textfont)
+    Window.draw_font(8, 368, $message, font_fff16)
     # ステータス
-    Window.draw_box_fill(0, 0, Window.width, 36, [0, 0, 0])
-    Window.draw_font(0, 0, $status, textfont)
-    Window.draw_font(Window.width - 40, 0, "#{$floor}F", textfont)
+    Window.draw_font(8, Window.height - 24, $status, font_fff16)
+    Window.draw_font(Window.width - font_fff16.get_width("#{$floor}F") - 8, Window.height - 24, "#{$floor}F", font_fff16)
+    # タイトル行
+    Window.draw_box_fill(0, 0, Window.width, 48, [0, 0, 0])
+    Window.draw_font((Window.width - font_fff16.get_width($title)) / 2, 16, $title, font_fff16)
 
     if $scene == :ending
       Window.draw_box_fill(0, 0, Window.width, Window.height, [0, 0, 0])
-      Window.draw_font(0, 360, 'THE END', textfont)
+      Window.draw_font((Window.width - font_fff16.get_width('THE END')) / 2, 360, 'THE END', font_fff16)
+    end
+
+    if $fade_flg
+      Window.draw_box_fill(0, 0, Window.width, Window.height, [(255 / 60 * $fade_frames).floor, 0, 0, 0])
+      $fade_frames -= 1
+      $fade_flg = false if $fade_frames == 0
     end
   end
 end
 
 # Window.bgcolor = [120, 12, 12]
-# textfont = Font.new(16, font_name="meiryo")
+# font_fff16 = Font.new(16, font_name="meiryo")
 # frame_count = 0
 # GROUND_Y = 420
 
