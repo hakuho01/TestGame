@@ -580,7 +580,7 @@ class Action
     when 16 # 治癒神唱
       $player_gain_hp = ($player_stats[:max_hp] - $player_stats[:hp]).positive? ? (($player_stats[:max_hp] - $player_stats[:hp])**(2 / 3.0)).floor : 0
       $player_stats[:hp] = $player_stats[:hp] + $player_gain_hp
-      player_stats[:abnormal].push(4) if player_stats[:abnormal].include?(4)
+      $player_stats[:abnormal].push(4) if $player_stats[:abnormal].include?(4)
 
       $message = "体力を#{$player_gain_hp}回復した。神の加護を得た"
 
