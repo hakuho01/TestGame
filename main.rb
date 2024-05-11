@@ -3,25 +3,8 @@ include DXOpal
 
 Window.bgcolor = [0, 0, 0]
 
-frame_count = 0
-$event_id = 1
-
-$player_stats = {
-  max_hp: 100,
-  hp: 100,
-  atk: 20,
-  tmp_atk: 0,
-  def: 20,
-  tmp_def: 0,
-  abnormal: []
-}
-
-$player_actions = [1, 2, 3]
-$actions_slot = []
-
-$scene = :map
-
 font_fff16 = Font.new(16, 'ヒラギノ角ゴ')
+font_fff14 = Font.new(14, 'ヒラギノ角ゴ')
 font_fff12 = Font.new(12, 'ヒラギノ角ゴ')
 
 Image.register(:enemy1, 'images/enemy1.png')
@@ -90,9 +73,9 @@ ENEMIES = [
     stage: 1,
     enemy: [
       { id: 1, name: 'ゴブリン', hp: 50, atk: 25, def: 5, actions: [1, 1, 2, 3], award: { status: 'max_hp', value: 2 } },
-      { id: 2, name: 'スライム', hp: 60, atk: 30, def: 10, actions: [1, 1, 3], award: { status: 'def', value: 2 } },
+      { id: 2, name: 'スライム', hp: 60, atk: 30, def: 10, actions: [1, 3], award: { status: 'def', value: 2 } },
       { id: 3, name: 'ゾンビ', hp: 35, atk: 28, def: 8, actions: [1, 2], award: { status: 'atk', value: 2 } },
-      { id: 4, name: 'ゴースト', hp: 40, atk: 25, def: 12, actions: [2, 3, 8], award: { status: 'max_hp', value: 4 } },
+      { id: 4, name: 'ゴースト', hp: 40, atk: 25, def: 12, actions: [2, 3, 8], award: { status: 'atk', value: 3 } },
     ]
   },
   {
@@ -109,7 +92,7 @@ ENEMIES = [
     enemy: [
       { id: 9, name: 'ハイドラ', hp: 75, atk: 42, def: 22, actions: [2, 3, 4, 10], award: { status: 'max_hp', value: 3 } },
       { id: 10, name: 'ワイバーン', hp: 90, atk: 35, def: 18, actions: [1, 3, 9], award: { status: 'def', value: 4 } },
-      { id: 11, name: 'ガーゴイル', hp: 85, atk: 39, def: 25, actions: [1, 2, 9, 10], award: { status: 'atk', value: 2 } },
+      { id: 11, name: 'ガーゴイル', hp: 85, atk: 39, def: 25, actions: [1, 2, 9, 10], award: { status: 'def', value: 2 } },
       { id: 12, name: 'ミノタウロス', hp: 120, atk: 45, def: 20, actions: [2, 4], award: { status: 'atk', value: 4 } },
     ]
   },
@@ -133,7 +116,7 @@ ENEMIES = [
 # Mapクラス
 class Map
   def initialize
-    $floor = 1
+    $floor = 0
     $branch_num = 0
   end
 
@@ -355,18 +338,18 @@ class Battle
       $message = "1. #{action.fetch_action($actions_slot[0])[:name]} 2. #{action.fetch_action($actions_slot[1])[:name]} 3. #{action.fetch_action($actions_slot[2])[:name]}"
 
       # プレイヤーの行動処理
-      if Input.key_push?(K_1)
+      if Input.key_push?(K_1) && $player_stats[:actions] > 0
         $player_action_name = action.fetch_action($actions_slot[0])[:name]
         action.execute_action($actions_slot[0])
-      elsif Input.key_push?(K_2)
+      elsif Input.key_push?(K_2) && $player_stats[:actions] > 1
         $player_action_name = action.fetch_action($actions_slot[1])[:name]
         action.execute_action($actions_slot[1])
-      elsif Input.key_push?(K_3)
+      elsif Input.key_push?(K_3) && $player_stats[:actions] > 2
         $player_action_name = action.fetch_action($actions_slot[2])[:name]
         action.execute_action($actions_slot[2])
-      #elsif Input.key_push?(K_4)
-      #  $player_action_name = action.fetch_action($actions_slot[3])[:name]
-      #  action.execute_action($actions_slot[3])
+      elsif Input.key_push?(K_4) && $player_stats[:actions] > 3
+        $player_action_name = action.fetch_action($actions_slot[3])[:name]
+        action.execute_action($actions_slot[3])
       end
     when :player_effect
       $actions_slot = []
@@ -501,7 +484,7 @@ class Action
       $battle_phase = :player_effect
     when 8 # 双撃
       $player_dmg = (($player_stats[:atk] + $player_stats[:tmp_atk]) * 0.8).floor
-      $total_give_dmg = $player_dmg * 2 - $enemy_def - $enemy_tmp_def
+      $total_give_dmg = $player_dmg * 2 - ($enemy_def + $enemy_tmp_def) * 2
       $total_give_dmg = 0 if $total_give_dmg < 1
       $enemy_hp = $enemy_hp - $total_give_dmg
       $enemy_hp = 0 if $enemy_hp < 1
@@ -580,14 +563,14 @@ class Action
     when 16 # 治癒神唱
       $player_gain_hp = ($player_stats[:max_hp] - $player_stats[:hp]).positive? ? (($player_stats[:max_hp] - $player_stats[:hp])**(2 / 3.0)).floor : 0
       $player_stats[:hp] = $player_stats[:hp] + $player_gain_hp
-      $player_stats[:abnormal].push(4) if $player_stats[:abnormal].include?(4)
+      $player_stats[:abnormal].push(4) unless $player_stats[:abnormal].include?(4)
 
       $message = "体力を#{$player_gain_hp}回復した。神の加護を得た"
 
       $battle_phase = :player_effect
     when 17 # 双天撃
       $player_dmg = $player_stats[:atk] + $player_stats[:tmp_atk]
-      $total_give_dmg = $player_dmg * 2 - $enemy_def - $enemy_tmp_def
+      $total_give_dmg = $player_dmg * 2 - ($enemy_def + $enemy_tmp_def) * 2
       $total_give_dmg = 0 if $total_give_dmg < 1
       $enemy_hp = $enemy_hp - $total_give_dmg
       $enemy_hp = 0 if $enemy_hp < 1
@@ -597,7 +580,7 @@ class Action
       $battle_phase = :player_effect
     when 18 # 双天崩撃
       $player_dmg = (($player_stats[:atk] + $player_stats[:tmp_atk]) * 1.5).floor
-      $total_give_dmg = $player_dmg * 2 - $enemy_def - $enemy_tmp_def
+      $total_give_dmg = $player_dmg * 2 - ($enemy_def + $enemy_tmp_def) * 2
       $total_give_dmg = 0 if $total_give_dmg < 1
       $enemy_hp = $enemy_hp - $total_give_dmg
       $enemy_hp = 0 if $enemy_hp < 1
@@ -610,10 +593,11 @@ class Action
       $total_give_dmg = $player_dmg - $enemy_def - $enemy_tmp_def
       $total_give_dmg = 0 if $total_give_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] + $total_give_dmg
+      $player_stats[:hp] = $player_stats[:max_hp] if $player_stats[:hp] > $player_stats[:max_hp]
       $enemy_hp = $enemy_hp - $total_give_dmg
       $enemy_hp = 0 if $enemy_hp < 1
 
-      $message = "敵からs体力を吸収した！#{$total_give_dmg}ダメージを奪った"
+      $message = "敵から体力を吸収した！#{$total_give_dmg}ダメージを奪った"
 
       $battle_phase = :player_effect
     end
@@ -663,7 +647,7 @@ class EnemyAction
 
       $message = "#{$enemy_name}の#{$enemy_action_name}！#{$total_take_dmg}ダメージを受けた"
     when 2 # 警戒
-      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.8).floor
+      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.7).floor
       $enemy_tmp_def = ($enemy_def * 0.3).floor
       $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
@@ -675,7 +659,7 @@ class EnemyAction
 
       $message = "#{$enemy_name}は防御の構えに入った"
     when 4 # 大攻撃
-      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 1.5).floor
+      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 1.3).floor
       $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] - $total_take_dmg
@@ -684,7 +668,7 @@ class EnemyAction
     when 5 # 大警戒
       $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.9).floor
       $enemy_tmp_def = ($enemy_def * 0.5).floor
-      $total_take_dmg = $enemy_dmg - $player_stats[:def]- $player_stats[:tmp_def]
+      $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] - $total_take_dmg
 
@@ -702,7 +686,7 @@ class EnemyAction
 
       $message = "#{$enemy_name}は呪いをかけた"
     when 9 # 火吹き
-      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.5).floor
+      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.7).floor
       $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] - $total_take_dmg
@@ -710,7 +694,7 @@ class EnemyAction
 
       $message = "#{$enemy_name}の火吹き攻撃！#{$total_take_dmg}ダメージを受けた。火傷を負った"
     when 10 # 毒牙
-      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.5).floor
+      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.7).floor
       $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] - $total_take_dmg
@@ -718,11 +702,12 @@ class EnemyAction
 
       $message = "#{$enemy_name}は毒牙を突き立てた！#{$total_take_dmg}ダメージを受けた。毒を受けた"
     when 11 # 吸血
-      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.5).floor
+      $enemy_dmg = (($enemy_atk + $enemy_tmp_atk) * 0.7).floor
       $total_take_dmg = $enemy_dmg - $player_stats[:def] - $player_stats[:tmp_def]
       $total_take_dmg = 0 if $total_take_dmg < 1
       $player_stats[:hp] = $player_stats[:hp] - $total_take_dmg
       $enemy_hp = $enemy_hp + $total_take_dmg
+      $enemy_hp = $enemy_max_hp if $enemy_hp > $enemy_max_hp
 
       $message = "#{$enemy_name}の#{$enemy_action_name}！#{$total_take_dmg}ダメージを吸収された"
     when 12 # 激怒
@@ -748,9 +733,29 @@ end
 
 # メインループ
 Window.load_resources do
+  frame_count = 0
+  $event_id = 1
+
+  $player_stats = {
+    max_hp: 100,
+    hp: 100,
+    atk: 20,
+    tmp_atk: 0,
+    def: 20,
+    tmp_def: 0,
+    abnormal: [],
+    actions: 3
+  }
+
+  $player_actions = [1, 2, 3]
+  $actions_slot = []
+
+  $scene = :map
+
   $event = Event.new
   $map = Map.new
   $rest = Rest.new
+
   Window.loop do
     frame_count += 1
 
@@ -788,14 +793,14 @@ Window.load_resources do
       Window.draw(0, 0, Image['route'+$branches.size.to_s])
       case $branches.size
       when 1
-        Window.draw(317, 135, Image['icon_'+$branches[0]])
+        Window.draw(317, 135, Image['icon_' + $branches[0]])
       when 2
         $branches.each_with_index do |branch, i|
-          Window.draw(196 + 243 * i, 135, Image['icon_'+branch])
+          Window.draw(196 + 243 * i, 135, Image['icon_' + branch])
         end
       when 3
         $branches.each_with_index do |branch, i|
-          Window.draw(196 + 122 * i, 135, Image['icon_'+branch])
+          Window.draw(196 + 122 * i, 135, Image['icon_' + branch])
         end
       end
     else
@@ -804,13 +809,17 @@ Window.load_resources do
 
     # 敵
     if $scene == :battle
+      enemy_tmp_msg = ''
+      enemy_tmp_msg += '攻UP ' if $enemy_tmp_atk != 0
+      enemy_tmp_msg += '防UP ' if $enemy_tmp_def != 0
       Window.draw_font(400, 140, "#{$enemy_name}", font_fff16)
       Window.draw_box_fill(398, 164, 482, 177, [62, 62, 62])
       Window.draw_box_fill(400, 166, 480, 175, [0, 0, 0])
       Window.draw_box_fill(400, 166, 400 + (80 * $enemy_hp / $enemy_max_hp).floor, 175, [0, 255, 0])
-      Window.draw_font(400, 180, "#{$enemy_hp}/#{$enemy_max_hp}", font_fff12)
-      Window.draw_font(400, 210, "#{$enemy_action_name}", font_fff12)
-      Window.draw(150, 140, Image['enemy'+$enemy_data[:id].to_s])
+      Window.draw_font(400, 180, "#{$enemy_hp}/#{$enemy_max_hp}", font_fff14)
+      Window.draw_font(400, 200, enemy_tmp_msg, font_fff12)
+      Window.draw_font(400, 220, "#{$enemy_action_name}", font_fff14)
+      Window.draw(150, 140, Image['enemy' + $enemy_data[:id].to_s])
     end
 
     # テキストウィンドウ
@@ -830,7 +839,7 @@ Window.load_resources do
 
     if $fade_flg
       opacity = (255 / 45 * $fade_frames).floor
-      Window.draw_box_fill(0, 0, Window.width, Window.height, [opacity , 0, 0, 0])
+      Window.draw_box_fill(0, 0, Window.width, Window.height, [opacity, 0, 0, 0])
       $fade_frames -= 1
       $fade_flg = false if $fade_frames == 0
     end
