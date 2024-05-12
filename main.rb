@@ -553,9 +553,9 @@ class Action
     when 15 # 治癒唱
       $player_gain_hp = ($player_stats[:max_hp] - $player_stats[:hp]).positive? ? (($player_stats[:max_hp] - $player_stats[:hp])**(1 / 2.0)).floor : 0
       $player_stats[:hp] = $player_stats[:hp] + $player_gain_hp
-      player_stats[:abnormal].delete(1) if player_stats[:abnormal].include?(1)
-      player_stats[:abnormal].delete(2) if player_stats[:abnormal].include?(2)
-      player_stats[:abnormal].delete(3) if player_stats[:abnormal].include?(3)
+      $player_stats[:abnormal].delete(1) if $player_stats[:abnormal].include?(1)
+      $player_stats[:abnormal].delete(2) if $player_stats[:abnormal].include?(2)
+      $player_stats[:abnormal].delete(3) if $player_stats[:abnormal].include?(3)
 
       $message = "体力を#{$player_gain_hp}回復した。状態異常を解除した"
 
