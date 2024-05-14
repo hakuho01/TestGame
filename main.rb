@@ -132,7 +132,7 @@ class Map
     case $branch_num
     when 1
       $message = '先へ進む'
-      if Input.key_push?(K_ENTER)
+      if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
         $floor += 1
         $scene = $branches[0]
         go_scene($scene)
@@ -169,6 +169,10 @@ class Map
 end
 
 def go_scene(scene)
+  if $floor == 51
+    $scene = :ending
+    return
+  end
   case scene
   when :battle
     $battle = Battle.new
@@ -189,7 +193,6 @@ def go_scene(scene)
     $rest = Rest.new
   end
   $branch_num = 0
-  $scene = :ending if $floor == 51
   fade_in
 end
 
@@ -225,12 +228,12 @@ class Rest
       end
     when 1 # 休憩
       $message = '温泉に浸かって体力が回復した'
-      $scene = :map if Input.key_push?(K_ENTER)
+      $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
     when 2 # 強化
       $message = '温泉の湯を飲んでステータスが上昇した'
-      $scene = :map if Input.key_push?(K_ENTER)
+      $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
     when 3 # 鍛錬
-      $scene = :map if Input.key_push?(K_ENTER)
+      $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
     end
   end
 end
@@ -248,40 +251,40 @@ class Event
       case $steps
       when 0
         $message = 'おぼろ「やぁ！」'
-        $steps += 1 if Input.key_push?(K_ENTER)
+        $steps += 1 if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
       when 1
         $message = 'おぼろ「研究の成果を君にも分けてあげよう！」'
-        if Input.key_push?(K_ENTER)
+        if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
           $player_stats[:atk] = ($player_stats[:atk] * 1.1).floor
           $steps += 1
         end
       when 2
         $message = '攻撃力が上がった'
-        $scene = :map if Input.key_push?(K_ENTER)
+        $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
       end
     when 2
       $title = '三十三間堂'
       case $steps
       when 0
         $message = '1000ju「お前、手2本しかないの？」'
-        $steps += 1 if Input.key_push?(K_ENTER)
+        $steps += 1 if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
       when 1
         if $player_actions.include?(8)
           $message = '1000ju「いや、なんでもない」'
-          $steps = 3 if Input.key_push?(K_ENTER)
+          $steps = 3 if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
         else
           $message = '1000ju「けどまあ2本の手でそれぞれ攻撃すれば2回攻撃できるじゃん」'
-          if Input.key_push?(K_ENTER)
+          if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
             $player_actions.push(8)
             $steps = 2
           end
         end
       when 2
         $message = '双撃を覚えた'
-        $scene = :map if Input.key_push?(K_ENTER)
+        $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
       when 3
         $message = '1000juはパチンコを打ちに行ってしまった'
-        $scene = :map if Input.key_push?(K_ENTER)
+        $scene = :map if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
       end
     when 3
     end
@@ -353,20 +356,20 @@ class Battle
       end
     when :player_effect
       $actions_slot = []
-      if Input.key_push?(K_ENTER)
+      if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
         $battle_phase = :enemy_action
         $battle_phase = :player_win if $enemy_hp.zero?
       end
     when :enemy_action
       $enemy_tmp_def = 0
       $message = "#{$enemy_name}の行動！"
-      if Input.key_push?(K_ENTER)
+      if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
         # 敵の行動処理
         $enemy_action.execute_action($enemy_action_id)
         # 状態異常処理
         # 火傷
         if $player_stats[:abnormal].include?(1)
-          fire_dmg = ($player_stats[:max_hp] * 0.05).floor - ($player_stats[:def] - $player_stats[:tmp_def])
+          fire_dmg = ($player_stats[:max_hp] * 0.05).floor - ($player_stats[:def] + $player_stats[:tmp_def])
           fire_dmg = 0 if fire_dmg < 1
           $player_stats[:hp] = $player_stats[:hp] - fire_dmg
           $message = $message + ' 火傷のダメージを受けた'
@@ -394,7 +397,7 @@ class Battle
     when :enemy_effect
       $enemy_action_id = 0
       $battle_phase = :player_lose if $player_stats[:hp].zero?
-      $battle_phase = :player_action if Input.key_push?(K_ENTER)
+      $battle_phase = :player_action if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
     when :player_win
       case @win_step
       when 0
@@ -402,13 +405,13 @@ class Battle
         $player_stats[:tmp_atk] = 0
         $player_stats[:tmp_def] = 0
         $player_stats[:abnormal] = []
-        if Input.key_push?(K_ENTER)
+        if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
           $player_stats[$enemy_data[:award][:status]] = $player_stats[$enemy_data[:award][:status]] + $enemy_data[:award][:value]
           @win_step += 1
         end
       when 1
         $message = 'ステータスが上昇した'
-        if Input.key_push?(K_ENTER)
+        if Input.key_push?(K_ENTER) || Input.key_push?(K_SPACE)
           $scene = :map
         end
       end
