@@ -218,11 +218,11 @@ class Rest
       elsif Input.key_push?(K_3)
         rank = ($floor / 10).ceil
         unaq_action = ACTIONS.find_all { |hash| hash[:rank] == rank }.sample
-        unless $player_actions.include?(unaq_action[:id])
+        if $player_actions.include?(unaq_action[:id])
+          $message = '何も得られなかった'
+        else
           $player_actions.push(unaq_action[:id])
           $message = "鍛錬して#{unaq_action[:name]}を身につけた"
-        else
-          $message = '何も得られなかった'
         end
         @rest_step = 3
       end
@@ -467,7 +467,7 @@ class Action
 
       $battle_phase = :player_effect
     when 5 # 集中
-      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.05).floor
+      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.1).floor
 
       $message = '集中して力を溜めている'
 
@@ -480,7 +480,7 @@ class Action
 
       $battle_phase = :player_effect
     when 7 # 激昂
-      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.15).floor
+      $player_stats[:tmp_atk] = $player_stats[:tmp_atk] + ($player_stats[:atk] * 0.25).floor
 
       $message = '激昂して攻撃力が上がった'
 
